@@ -28,6 +28,10 @@ int main() {
         client.RequestConnect(host, port);
     });
 
+    parser.RegisterCommand("/disconnect", [&client](const std::vector<std::string>& args) {
+        client.Disconnect();
+    });
+
     parser.RegisterCommand("/name", [&client](const std::vector<std::string>& args) {
         if (args.size() < 2) {
             std::cout << "Usage: /name <username>\n";

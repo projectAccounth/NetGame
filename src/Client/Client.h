@@ -27,7 +27,7 @@ private:
     Client(Client&&) = delete;
     Client& operator=(Client&&) = delete;
 
-    const uint32_t CLIENT_PROTOCOL_VERSION = 3;
+    const uint32_t CLIENT_PROTOCOL_VERSION = 2;
 public:
     InputService& GetInputService() { return inputService; }
     Screen& GetCurrentScreen() { return *currentScreen; }
