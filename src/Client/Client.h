@@ -27,7 +27,7 @@ private:
     Client(Client&&) = delete;
     Client& operator=(Client&&) = delete;
 
-    const uint32_t CLIENT_PROTOCOL_VERSION = 2;
+    const uint32_t CLIENT_PROTOCOL_VERSION = 3;
 public:
     InputService& GetInputService() { return inputService; }
     Screen& GetCurrentScreen() { return *currentScreen; }
@@ -68,7 +68,9 @@ public:
         }
     }
 
-    void SetUsername(const std::string& name) { username = name; }
+    void SetUsername(const std::string& name) { 
+        username = name; 
+    }
     std::string GetUsername() const { return username; }
 
     void Shutdown() {

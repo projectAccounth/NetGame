@@ -87,10 +87,8 @@ public:
 
     void disconnectClient(const UUID& id) {
         if (auto it = sessions.find(id); it != sessions.end()) {
-            it->second->stop();
-            sessions.erase(it);
+            it->second->terminate();
             std::cout << "[NetworkSystem] Client " << id << " disconnected by NetworkSystem\n";
-            onClientDisconnect.Fire(id);
         }
     }
 
@@ -103,10 +101,14 @@ private:
                 auto session = std::make_shared<ClientSession>(std::move(*socket), id);
 
                 // Handle disconnection
-                session->onDisconnect = [this](const UUID& id) {
-                    sessions.erase(id);
+                session->onDisconnect = [this](const UUID& id) {      
                     std::cout << "[NetworkSystem] Client " << id << " removed\n";
                     onClientDisconnect.Fire(id);
+
+                    if (auto it = sessions.find(id); it != sessions.end()) {
+                        it->second->stop();
+                        sessions.erase(id);
+                    } 
                 };
 
                 // Handle incoming messages

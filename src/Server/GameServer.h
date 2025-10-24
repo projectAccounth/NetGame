@@ -7,6 +7,7 @@
 #include "Common/Packets/2W/ChatMessagePacket.h"
 #include "Common/Packets/S2C/HandshakeAckPacket.h"
 #include "Common/Packets/C2S/HandshakePacket.h"
+#include "Common/Packets/C2S/InputPacket.h"
 #include "Common/Network/PacketDispatcher.h"
 #include "Common/Network/PacketIO.h"
 #include "Common/Network/ProtocolRegistry.h"
@@ -20,6 +21,8 @@ using Util::UUID;
 
 class GameServer {
 private:
+    const uint32_t SERVER_PROTOCOL_VERSION = 2;
+
     asio::io_context io;
     NetworkSystem network;
 
@@ -35,8 +38,6 @@ private:
 
         // Start handshake process
         HandshakePacket handshakeRequest;
-        handshakeRequest.authToken = id;
-
         network.sendTo(id, pIO.EncodePacket(handshakeRequest));
     }
 
@@ -55,17 +56,15 @@ private:
         std::cout << "[GameServer] Received message from " << id << ": " << msg.size() << " bytes\n";
         try {
             auto packet = pIO.DecodePacket(msg);
-            if (packet) dispatcher.Dispatch(*packet);
+            if (packet) dispatcher.Dispatch(*packet, id);
         } 
         catch (const std::exception& e) {
             std::cerr << "[GameServer] Packet decode error: " << e.what() << std::endl;
         }
     }
 
-    const uint32_t ServerProtocolVersion = 2;
-
     void handleHandshake(const HandshakePacket& packet, UUID clientID) {
-        if (packet.clientVersion != ServerProtocolVersion) {
+        if (packet.clientVersion != SERVER_PROTOCOL_VERSION) {
             std::cerr << "[GameServer] Client " << clientID << " has incompatible version: " << packet.clientVersion << "\n";
             HandshakeAckPacket ack{false, "Incompatible version"};
             network.sendTo(clientID, pIO.EncodePacket(ack));
@@ -76,7 +75,7 @@ private:
         // Optionally verify authToken here...
 
         std::cout << "[GameServer] Client " << clientID << " verified successfully.\n";
-        HandshakeAckPacket ack{true, "Welcome to the server!"};
+        HandshakeAckPacket ack{true, "Verification successful! Welcome to the server."};
         network.sendTo(clientID, pIO.EncodePacket(ack));
     }
 
@@ -94,6 +93,7 @@ public:
         dispatcher.Register<ChatMessagePacket>();
         dispatcher.Register<HandshakePacket>();
         dispatcher.Register<HandshakeAckPacket>();
+        dispatcher.Register<InputPacket>();
 
         network.onClientConnect.ConnectPersistent([this](UUID id) {
             handleClientConnect(id);
@@ -108,15 +108,15 @@ public:
         });
 
         dispatcher.GetSignal<PlayerJoinPacket>().ConnectPersistent(
-            [this](PlayerJoinPacket& pkt) {  });
+            [this](PlayerJoinPacket& pkt, const UUID& clientId) {  });
         dispatcher.GetSignal<ChatMessagePacket>().ConnectPersistent(
-            [this](ChatMessagePacket& pkt) { 
+            [this](ChatMessagePacket& pkt, const UUID& clientId) { 
                 std::cout << "[GameServer] Chat from " << pkt.sender << ": " << pkt.message << "\n";
                 network.sendToAll(pIO.EncodePacket(pkt)); 
             });
 
-        dispatcher.GetSignal<HandshakePacket>().ConnectPersistent([this](HandshakePacket& packet) {
-            handleHandshake(packet, packet.authToken);
+        dispatcher.GetSignal<HandshakePacket>().ConnectPersistent([this](HandshakePacket& packet, const UUID& clientId) {
+            handleHandshake(packet, clientId);
         });
     }
 

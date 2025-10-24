@@ -16,7 +16,7 @@ int main() {
             return;
         }
         std::string host = args[1];
-        unsigned short port = 25565;
+        unsigned short port = 4000;
         if (args.size() >= 3) {
             try {
                 port = static_cast<unsigned short>(std::stoul(args[2]));
@@ -34,7 +34,6 @@ int main() {
             return;
         }
         auto username = args[1];
-        client.SetUsername(username);
         std::cout << "Username set to '" << username << "'\n";
         client.SetUsername(username);
     });

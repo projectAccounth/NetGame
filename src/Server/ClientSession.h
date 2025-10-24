@@ -12,10 +12,11 @@ public:
     std::function<void(UUID)> onDisconnect;
 
     ClientSession(tcp::socket socket, UUID id)
-        : socket(std::move(socket)), uuid(std::move(id)), isConnected(true) {}
+        : socket(std::move(socket)), uuid(std::move(id)) {}
 
     void start() {
         std::cout << "[Session] Started for " << uuid << std::endl;
+        isConnected.store(true);
         readLoop();
     }
 
@@ -35,11 +36,22 @@ public:
     }
 
     void stop() {
+        if (!isConnected.load()) return;
+
         asio::post(socket.get_executor(), [self = shared_from_this()]() {
-            self->isConnected = false;
+            self->isConnected.store(false);
             self->socket.close();
+
+            std::cout << "[ClientSession] Connection terminated.\n";
         });
     }
+
+    void terminate() {
+        onDisconnect(uuid);
+        stop();
+    }
+
+    ~ClientSession() = default;
 
 private:
     void doWrite() {
@@ -51,7 +63,7 @@ private:
                     if (!self->outgoing.empty()) self->doWrite();
                 } else {
                     std::cerr << "[Session] Write error for client " << self->uuid << ": " << ec.message() << "\n";
-                    self->isConnected = false;
+                    self->isConnected.store(false);
                 }
             });
     }
@@ -66,7 +78,7 @@ private:
                     self->readLoop();
                 } else {
                     std::cout << "[Session] " << self->uuid << " disconnected\n";
-                    self->isConnected = false;
+                    self->isConnected.store(false);
                     if (self->onDisconnect)
                         self->onDisconnect(self->uuid);
                 }
@@ -77,5 +89,5 @@ private:
     std::array<char, 2048> buffer; // 2KB buffer for larger payloads
     std::vector<std::vector<uint8_t>> outgoing;
     UUID uuid;
-    bool isConnected; // Tracks whether the client is still connected
+    std::atomic<bool> isConnected { false }; // Tracks whether the client is still connected
 };

@@ -45,6 +45,7 @@ public:
                                         OnConnected.Fire();
                                         readLoop();
                                     } else {
+                                        connected.store(false);
                                         std::string msg = "[NetworkClient] Connect failed: " + ec.message();
                                         std::cerr << msg << "\n";
                                         OnConnectFailed.Fire(msg);
@@ -80,7 +81,7 @@ public:
             if (ec)
                 std::cerr << "[NetworkClient] Disconnect error: " << ec.message() << "\n";
             OnDisconnected.Fire();
-            std::cout << "[NetworkClient] Disconnected cleanly.\n";
+            std::cout << "[NetworkClient] Disconnected.\n";
         });
     }
 
@@ -139,6 +140,7 @@ private:
             if (close_ec)
                 std::cerr << "[NetworkClient] Socket close error: " << close_ec.message() << "\n";
             OnDisconnected.Fire();
+            connected.store(false);
         }
     }
 

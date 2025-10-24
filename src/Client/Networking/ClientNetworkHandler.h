@@ -35,19 +35,19 @@ protected:
     }
 
     void InitListeners() {
-        dispatcher.GetSignal<PlayerJoinPacket>().ConnectPersistent([](PlayerJoinPacket& pkt) {
+        dispatcher.GetSignal<PlayerJoinPacket>().ConnectPersistent([](PlayerJoinPacket& pkt, const UUID&) {
             std::cout << "Player joined: " << pkt.username << "\n";
         });
 
-        dispatcher.GetSignal<PlayerLeavePacket>().ConnectPersistent([](PlayerLeavePacket& pkt) {
+        dispatcher.GetSignal<PlayerLeavePacket>().ConnectPersistent([](PlayerLeavePacket& pkt, const UUID&) {
             std::cout << "Player left: " << pkt.username << "\n";
         });
 
-        dispatcher.GetSignal<ChatMessagePacket>().ConnectPersistent([](ChatMessagePacket& pkt) {
+        dispatcher.GetSignal<ChatMessagePacket>().ConnectPersistent([](ChatMessagePacket& pkt, const UUID&) {
             std::cout << "[" << pkt.sender << "]: " << pkt.message << "\n";
         });
 
-        dispatcher.GetSignal<HandshakeAckPacket>().ConnectOncePersistent([this](HandshakeAckPacket& pkt) {
+        dispatcher.GetSignal<HandshakeAckPacket>().ConnectOncePersistent([this](HandshakeAckPacket& pkt, const UUID&) {
             if (pkt.success) {
                 std::cout << "[Client] Successfully connected! " << pkt.message << '\n';
             } else {
@@ -56,8 +56,8 @@ protected:
             }
         });
 
-        dispatcher.GetSignal<HandshakePacket>().ConnectOncePersistent([this](HandshakePacket& pkt) {
-            HandleHandshake(pkt.authToken);
+        dispatcher.GetSignal<HandshakePacket>().ConnectOncePersistent([this](HandshakePacket& pkt, const UUID&) {
+            HandleHandshake(UUID::random());
         });
     }
 
@@ -90,7 +90,7 @@ public:
         network.OnServerMessage.ConnectPersistent([this](const std::vector<uint8_t>& data) {
             try {
                 auto packet = pIO.DecodePacket(data);
-                dispatcher.Dispatch(*packet);
+                dispatcher.Dispatch(*packet, UUID::null());
             } catch (const std::exception& e) {
                 std::cout << "[ClientNetworkHandler/OnServerMessage] Message failed: " << e.what() << "\n";
             }
@@ -128,7 +128,6 @@ public:
     }
 
     virtual void RequestConnect(const std::string& host, unsigned short port) {
-        // 💡 Must call StartNetwork() BEFORE this, or nothing runs
         if (!networkThread.joinable())
             StartNetwork();
         network.connect(host, port);
